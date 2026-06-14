@@ -15,14 +15,21 @@ app.use(cors());
 app.use(express.json());
 
 // Initialize Redis Client for Rate Limiting
+// Upstash (and other hosted Redis) requires TLS — use rediss:// scheme.
+// The client auto-detects TLS from the URL but we also set socket options explicitly.
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const redisClient = createClient({ url: REDIS_URL });
+const isTls = REDIS_URL.startsWith('rediss://');
+const redisClient = createClient({
+  url: REDIS_URL,
+  socket: isTls ? { tls: true, rejectUnauthorized: false } : undefined
+});
 redisClient.on('error', err => console.error('Redis Client Connection Error', err));
 redisClient.connect().then(() => {
-  console.log('Connected to local Redis cache successfully.');
+  console.log('Connected to Redis cache successfully.');
 }).catch(err => {
   console.warn('Redis offline. Rate limiting will be bypassed.', err.message);
 });
+
 
 // Domain Specific System Prompt Tone Adjustments
 const domainTones = {
